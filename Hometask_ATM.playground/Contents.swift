@@ -39,9 +39,17 @@ enum Currency {
 
 class Person {
     var personsMoney: [Currency: Float] = [.byn: 1543.67]
-    var pin: Int
+    private var _pin: String = "0000"
+    var pin: String {
+        get {
+            return self._pin
+        }
+        set {
+            self._pin = newValue
+        }
+    }
     
-    init(personsMoney: [Currency: Float], pin: Int) {
+    init(personsMoney: [Currency: Float], pin: String) {
         self.personsMoney = personsMoney
         self.pin = pin
     }
@@ -53,21 +61,20 @@ class ATM {
     private(set) var euroBanknotesOnAtm: [Int: Int] = [5: 50, 10: 50, 20: 50, 50: 150, 100: 50, 200: 1, 500: 0]
     private(set) var bynBanknotesOnAtm: [Int: Int] = [5: 50, 10: 50, 20: 50, 50: 200, 100: 200, 200: 1, 500: 0]
     
-    func getCash(person: Person, currency: Currency, sumToGetCash: Int, banknotes: [Int: Int], pin: Int) throws  {
+    // Считаем сумму денег в банкомате
+    private func sumMoney(arrayBanknotes: [Int: Int]) -> Int {
+        var item: Int = 0
+        arrayBanknotes.forEach() {
+            let a = $0.key * $0.value
+            item += a
+        }
+        return item
+    }
+    
+    func getCash(person: Person, currency: Currency, sumToGetCash: Int, banknotes: [Int: Int], pin: String) throws  {
         
         // Проверка правильно ли введен пин
         guard pin == person.pin else { throw AtmError.incorrectPin }
-        
-        // Считаем сумму денег в банкомате
-        func sumMoney(arrayBanknotes: [Int: Int]) -> Int {
-            var item: Int = 0
-            arrayBanknotes.forEach() {
-                let a = $0.key * $0.value
-                item += a
-            }
-            return item
-        }
-        
         let sumOfMoneyOnAtm: [Currency: Int] = [.usd: sumMoney(arrayBanknotes: usdBanknotesOnAtm),
                                                 .euro: sumMoney(arrayBanknotes: euroBanknotesOnAtm),
                                                 .byn: sumMoney(arrayBanknotes: bynBanknotesOnAtm)]
@@ -100,28 +107,29 @@ class ATM {
             for (key, value) in banknotes {
                 if let byn: Int = bynBanknotesOnAtm[key] {
                     guard byn >= value else { throw AtmError.notEnoughBanknotes }
-                    bynBanknotesOnAtm[key]! -= value }
+                    bynBanknotesOnAtm.updateValue(byn - value, forKey: key)
+                }
                 else { throw AtmError.incorrectBanknotes }
             }
         case .euro:
             for (key, value) in banknotes {
                 if let euro: Int = euroBanknotesOnAtm[key] {
                     guard euro >= value else { throw AtmError.notEnoughBanknotes }
-                    euroBanknotesOnAtm[key]! -= value }
-                else { throw AtmError.incorrectBanknotes }
+                    euroBanknotesOnAtm.updateValue(euro - value, forKey: key)
+                } else { throw AtmError.incorrectBanknotes }
             }
         case .usd:
             for (key, value) in banknotes {
                 if let usd: Int = usdBanknotesOnAtm[key] {
                     guard usd >= value else { throw AtmError.notEnoughBanknotes }
-                    usdBanknotesOnAtm[key]! -= value
+                    usdBanknotesOnAtm.updateValue(usd - value, forKey: key)
                 } else { throw AtmError.incorrectBanknotes }
             }
         }
         
         if let exchange: Float = exchangeRates[currency] {
-            if let _: Float = person.personsMoney[.byn] {
-                person.personsMoney[.byn]! -= Float(sumToGetCash) * exchange
+            if let item: Float = person.personsMoney[.byn] {
+                person.personsMoney.updateValue(item - Float(sumToGetCash) * exchange, forKey: .byn)
         }
         }
     
@@ -160,10 +168,10 @@ extension AtmError:  LocalizedError {
     }
 }
 
-let somePerson: Person = Person(personsMoney: [.byn: 1587.76], pin: 4325)
+let somePerson: Person = Person(personsMoney: [.byn: 1587.76], pin: "4325")
 let someAtm: ATM = ATM()
 do {
-    try someAtm.getCash(person: somePerson, currency: .euro, sumToGetCash: 200, banknotes: [50: 2, 100: 1], pin: 4325)
+    try someAtm.getCash(person: somePerson, currency: .euro, sumToGetCash: 200, banknotes: [50: 2, 100: 1], pin: "4325")
 } catch {
     print(error)
 }

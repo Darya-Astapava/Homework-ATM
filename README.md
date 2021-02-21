@@ -1,3 +1,3 @@
 # Homework-ATM
 
-Solution small task, simulating ATM operation.
+Solution small task, simulating ATM operations.
